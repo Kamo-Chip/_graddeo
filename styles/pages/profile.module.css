@@ -1,0 +1,17 @@
+.container {
+  background-color: var(--primary-1);
+  border: solid 1px var(--border-color);
+  border-radius: var(--radius-sm);
+  position: relative;
+  padding: 0.75rem;
+}
+
+.header {
+  display: flex;
+  flex-direction: row;
+}
+
+.header button {
+  height: fit-content;
+  margin-left: auto;
+}

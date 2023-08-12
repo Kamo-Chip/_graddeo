@@ -1,0 +1,22 @@
+.container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding: 1rem 0;
+  padding-top: .75rem;
+  border-top: solid 1px var(--border-color)
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: 24px;
+}
+
+.option span {
+    font-size: 12px;
+}

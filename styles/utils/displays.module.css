@@ -1,0 +1,15 @@
+.tag {
+  font-size: 12px;
+  border-radius: var(--radius-lg);
+  background-color: #fff;
+  padding: 0.25rem 0.5rem;
+  border: solid 1px var(--border-color);
+  text-align: center;
+  width: fit-content;
+}
+
+.highlight {
+  height: 2px;
+  border-radius: 30px;
+  background-color: #000;
+}

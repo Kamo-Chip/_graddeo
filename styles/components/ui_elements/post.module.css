@@ -1,0 +1,20 @@
+.container {
+  background-color: var(--primary-1);
+  padding: 0.75rem;
+  border: solid 1px var(--border-color);
+  border-radius: var(--radius-sm);
+  position: relative;
+}
+
+.expandedContainer {
+  position: absolute;
+  background-color: var(--primary-1);
+  top: 0.5rem;
+  bottom: 0.5rem;
+  left: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+  border-radius: var(--radius-sm);
+  padding: 0.75rem;
+  border: solid 1px var(--border-color);
+}

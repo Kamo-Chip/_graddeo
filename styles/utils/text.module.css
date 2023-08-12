@@ -1,0 +1,27 @@
+.heading1,
+.heading2,
+.heading3 {
+    font-family: "Inter";
+    font-weight: 500;
+}
+
+.heading1 {
+    font-size: 32px
+}
+
+.heading2 {
+    font-size: 24px;
+}
+
+.heading3 {
+    font-size: 18px;
+}
+
+.pageHeading {
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.smallTxt {
+    font-size: 12px;
+}
