@@ -1,11 +1,12 @@
 import { auth, db } from "@/firebase";
 import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
-import { setDoc, doc,getDoc } from "firebase/firestore";
+import { setDoc, doc, getDoc } from "firebase/firestore";
 import { Router, useRouter } from "next/router";
 
-export default function Home() {
+const OnboardPage = () => {
   const provider = new GoogleAuthProvider();
   const router = useRouter();
+
   const handleLogin = async (userType) => {
     try {
       const result = await signInWithPopup(auth, provider);
@@ -27,4 +28,6 @@ export default function Home() {
       <button onClick={() => handleLogin("hirer")}>Company login</button>
     </div>
   );
-}
+};
+
+export default OnboardPage;

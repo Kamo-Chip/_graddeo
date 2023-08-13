@@ -9,12 +9,56 @@ import {
   MdQuestionAnswer,
   MdSend,
 } from "react-icons/md";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import postStyles from "@/styles/components/ui_elements/post.module.css";
 import { FcLike } from "react-icons/fc";
+import { timeSincePosted } from "@/lib/format";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth, db } from "@/firebase";
+import { Timestamp, arrayUnion, doc, updateDoc } from "firebase/firestore";
+import { handleInputChange } from "@/lib/inputHandlers";
+import {
+  getPostHeader,
+  handleLike,
+  handlePostLike,
+  handleReply,
+  handleReplyLike,
+} from "@/lib/dbFunctions";
 
-const PostCard = ({ post }) => {
+const PostCard = ({ post, userDetails }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [posterDetails, setPosterDetails] = useState(null);
+  const [isRepliesUpdated, setIsRepliesUpdated] = useState(false);
+  const [replyDetails, setReplyDetails] = useState({
+    postedBy: {
+      id: userDetails.id,
+    },
+    timePosted: "",
+    text: "",
+    numLikes: 0,
+  });
+
+  useEffect(() => {
+    getPostHeader(post.postedBy.id).then((res) => {
+      setPosterDetails(res);
+    });
+    for (let i = 0; i < post.replies.length; i++) {
+      getPostHeader(post.replies[i].postedBy.id).then((res) => {
+        post.replies[i].postedBy = res;
+      });
+    }
+    setIsRepliesUpdated();
+  }, [post]);
+
+  useEffect(() => {
+    console.log(post);
+  }, []);
+
+  if (!posterDetails) {
+    return (
+      <div className={postStyles.container} style={{ height: "400px" }}></div>
+    );
+  }
 
   if (isExpanded) {
     return (
@@ -36,7 +80,7 @@ const PostCard = ({ post }) => {
             style={{ position: "absolute", top: "1.5rem", right: ".75rem" }}
             className={displayStyles.tag}
           >
-            {post.type}
+            {post.postType}
           </span>
           <div style={{ display: "flex" }}>
             <span style={{ marginRight: ".5rem" }}>
@@ -48,7 +92,7 @@ const PostCard = ({ post }) => {
                 flexDirection: "column",
               }}
             >
-              <span>{post.postedBy.name}</span>
+              <span>{posterDetails.name}</span>
               <div
                 style={{
                   display: "flex",
@@ -57,19 +101,21 @@ const PostCard = ({ post }) => {
                 }}
               >
                 <span className={displayStyles.tag}>
-                  {post.postedBy.university}
+                  {posterDetails.university}
                 </span>
                 <span
                   className={displayStyles.tag}
                   style={{ margin: "0 .25rem" }}
                 >
-                  {post.postedBy.schoolYear}
+                  {posterDetails.schoolYear}
                 </span>
                 <span className={displayStyles.tag}>
-                  {post.postedBy.degree}
+                  {posterDetails.degree}
                 </span>
                 <span style={{ marginLeft: ".5rem", fontSize: "14px" }}>
-                  {post.timePosted}
+                  {timeSincePosted(post.timePosted) == "now"
+                    ? timeSincePosted(post.timePosted)
+                    : `${timeSincePosted(post.timePosted)} ago`}
                 </span>
               </div>
             </div>
@@ -84,7 +130,7 @@ const PostCard = ({ post }) => {
             paddingBottom: "1rem",
           }}
         >
-          <div>{post.text}</div>
+          <div dangerouslySetInnerHTML={{ __html: post.text }} />
           <div>{post.image}</div>
           <div
             style={{
@@ -93,7 +139,7 @@ const PostCard = ({ post }) => {
               marginLeft: "auto",
             }}
           >
-            <span>{post.numLikes}</span>
+            <span>{post.likes.length}</span>
             <FcLike />
           </div>
         </div>
@@ -135,25 +181,62 @@ const PostCard = ({ post }) => {
                         {element.postedBy.degree}
                       </span>
                       <span style={{ marginLeft: ".5rem", fontSize: "14px" }}>
-                        {element.timePosted}
+                        {timeSincePosted(element.timePosted)} ago
                       </span>
                     </div>
                   </div>
                 </div>
                 <span>{element.text}</span>
-                <div
+                {/* <div
                   style={{
                     display: "flex",
                     alignItems: "center",
                     marginLeft: "auto",
                   }}
+                  onClick={() => handleReplyLike(post.id, idx)}
                 >
                   <span>{post.numLikes}</span>
                   <FcLike />
-                </div>
+                </div> */}
               </div>
             );
           })}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            padding: ".75rem",
+            justifyContent: "space-between",
+            backgroundColor: "#fff",
+            alignItems: "center",
+            border: "solid 1px var(--border-color)",
+            borderRadius: "var(--radius-sm)",
+            position: "absolute",
+            bottom: ".75rem",
+            left: ".75rem",
+            right: ".75rem",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <input
+              type="text"
+              placeholder="Share your thoughts here"
+              style={{ width: "100%" }}
+              id="text"
+              onChange={(e) =>
+                handleInputChange(e, replyDetails, setReplyDetails)
+              }
+            />
+          </div>
+          <span onClick={() => handleReply(post.id, replyDetails)}>
+            <MdSend size="24px" />
+          </span>
         </div>
       </div>
     );
@@ -164,7 +247,7 @@ const PostCard = ({ post }) => {
         style={{ position: "absolute", top: ".75rem", right: ".75rem" }}
         className={displayStyles.tag}
       >
-        {post.type}
+        {post.postType}
       </span>
       <div style={{ display: "flex" }}>
         <span style={{ marginRight: ".5rem" }}>
@@ -176,7 +259,7 @@ const PostCard = ({ post }) => {
             flexDirection: "column",
           }}
         >
-          <span>{post.postedBy.name}</span>
+          <span>{posterDetails.name}</span>
           <div
             style={{
               display: "flex",
@@ -185,14 +268,14 @@ const PostCard = ({ post }) => {
             }}
           >
             <span className={displayStyles.tag}>
-              {post.postedBy.university}
+              {posterDetails.university}
             </span>
             <span className={displayStyles.tag} style={{ margin: "0 .25rem" }}>
-              {post.postedBy.schoolYear}
+              {posterDetails.schoolYear}
             </span>
-            <span className={displayStyles.tag}>{post.postedBy.degree}</span>
+            <span className={displayStyles.tag}>{posterDetails.degree}</span>
             <span style={{ marginLeft: ".5rem", fontSize: "14px" }}>
-              {post.timePosted}
+              {timeSincePosted(post.timePosted)} ago
             </span>
           </div>
         </div>
@@ -204,7 +287,7 @@ const PostCard = ({ post }) => {
           gridTemplateColumns: post.image ? "80% 20%" : "100%",
         }}
       >
-        <div>{post.text}</div>
+        <div dangerouslySetInnerHTML={{ __html: post.text }} />
       </div>
       <div
         style={{
@@ -218,16 +301,19 @@ const PostCard = ({ post }) => {
             setIsExpanded(!isExpanded);
           }}
         >
-          {post.numReplies == 1
-            ? `${post.numReplies} reply`
-            : `${post.numReplies} repies`}
+          {post.replies.length == 1
+            ? `${post.replies.length} reply`
+            : `${post.replies.length} replies`}
         </span>
-        <div style={{ display: "flex", alignItems: "center" }}>
-          <span>{post.numLikes}</span>
+        <div
+          style={{ display: "flex", alignItems: "center" }}
+          onClick={() => handlePostLike(post.id, userDetails.id)}
+        >
+          <span>{post.likes.length}</span>
           <FcLike />
         </div>
       </div>
-      <div
+      {/* <div
         style={{
           display: "flex",
           padding: ".75rem",
@@ -252,7 +338,7 @@ const PostCard = ({ post }) => {
         <span>
           <MdSend size="24px" />
         </span>
-      </div>
+      </div> */}
     </div>
   );
 };

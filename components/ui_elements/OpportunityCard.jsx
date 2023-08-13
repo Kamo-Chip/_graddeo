@@ -1,12 +1,25 @@
 import { BiUserCircle } from "react-icons/bi";
 import cardStyles from "@/styles/components/ui_elements/card.module.css";
 import displayStyles from "@/styles/utils/displays.module.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Router } from "next/router";
+import { Router, useRouter } from "next/router";
+import { getPostHeader } from "@/lib/dbFunctions";
 
 const OpportunityCard = ({ opportunity }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [posterDetails, setPosterDetails] = useState({});
+  const [isPosterUpdated, setIsPosterUpdated] = useState(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    getPostHeader(opportunity.postedBy.id).then((res) => {
+      setPosterDetails(res);
+    });
+    setIsPosterUpdated(true);
+  }, [opportunity]);
+
   return (
     <div className={cardStyles.container}>
       <div className={cardStyles.main}>
@@ -43,7 +56,7 @@ const OpportunityCard = ({ opportunity }) => {
           <button
             style={{ marginBottom: ".5rem", width: "60px" }}
             onClick={() => {
-              Router.push(opportunity.link);
+              router.push(opportunity.link);
             }}
           >
             Apply
@@ -76,11 +89,11 @@ const OpportunityCard = ({ opportunity }) => {
           >
             <span>Posted by</span>
             <Link
-              href={`/users/${opportunity.postedBy.id}`}
+              href={`/users/${posterDetails.id}`}
               style={{ display: "flex", alignItems: "center" }}
             >
               <BiUserCircle size="50px" />
-              <span>{opportunity.postedBy.name}</span>
+              <span>{posterDetails.name}</span>
             </Link>
           </div>
         </div>

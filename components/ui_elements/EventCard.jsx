@@ -1,12 +1,25 @@
 import { BiUserCircle } from "react-icons/bi";
 import cardStyles from "@/styles/components/ui_elements/card.module.css";
 import displayStyles from "@/styles/utils/displays.module.css";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Router } from "next/router";
+import { useRouter } from "next/router";
+import { getPostHeader } from "@/lib/dbFunctions";
 
 const EventCard = ({ event }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [posterDetails, setPosterDetails] = useState({});
+  const [isPosterUpdated, setIsPosterUpdated] = useState(false);
+
+  const router = useRouter();
+
+  useEffect(() => {
+    getPostHeader(event.postedBy.id).then((res) => {
+      setPosterDetails(res);
+    });
+    setIsPosterUpdated(true);
+  }, [event]);
+
   return (
     <div
       className={cardStyles.container}
@@ -25,7 +38,7 @@ const EventCard = ({ event }) => {
         <button
           style={{ position: "absolute", top: ".75rem", right: ".75rem" }}
           onClick={() => {
-            Router.push(event.link);
+            router.push(event.link);
           }}
         >
           View more
@@ -74,7 +87,7 @@ const EventCard = ({ event }) => {
               style={{ display: "flex", alignItems: "center" }}
             >
               <BiUserCircle size="50px" />
-              <span>{event.postedBy.name}</span>
+              <span>{posterDetails.name}</span>
             </Link>
           </div>
         </div>

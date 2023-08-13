@@ -1,5 +1,5 @@
 .container {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
@@ -7,7 +7,8 @@
   grid-template-columns: repeat(5, 1fr);
   padding: 1rem 0;
   padding-top: .75rem;
-  border-top: solid 1px var(--border-color)
+  border-top: solid 1px var(--border-color);
+  background-color: #fff;
 }
 
 .option {

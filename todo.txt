@@ -1,2 +1,6 @@
-- Think through user login/onboarding process
-    - The idea is to make the application usable to a limited extent without logging in (Think facebook, social media in general)
+- Complete edit profile feature
+- Add images
+- Fix any bugs
+    - Database read/write optimisation
+- Fix styling
+- Add company view

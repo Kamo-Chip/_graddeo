@@ -10,81 +10,143 @@ import {
   MdClose,
   MdImage,
 } from "react-icons/md";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import postStyles from "@/styles/components/ui_elements/post.module.css";
 import { FcLike } from "react-icons/fc";
 import { IoCreate } from "react-icons/io5";
 import PostCard from "@/components/ui_elements/PostCard";
 import CustomSelect from "@/components/ui_elements/CustomSelect";
 import { useAuthState } from "react-firebase-hooks/auth";
-import { auth } from "@/firebase";
+import { auth, db } from "@/firebase";
+import { Router, useRouter } from "next/router";
+import { handleInputChange, handleSelectChange } from "@/lib/inputHandlers";
+import {
+  addDoc,
+  arrayUnion,
+  collection,
+  onSnapshot,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
+import {
+  createEvent,
+  createOpportunity,
+  createPost,
+  getPosts,
+  getUserDetails,
+} from "@/lib/dbFunctions";
 
-const posts = [
-  {
-    id: "",
-    type: "Question",
-    postedBy: {
-      name: "Lubona Chibwa",
-      id: "",
-      university: "Wits",
-      schoolYear: "Undergrad",
-      degree: "Computer Science",
-      image: "",
-    },
-    timePosted: "00:00",
-    text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat",
-    image: "",
-    numReplies: 1,
-    numLikes: 2,
-    replies: [
-      {
-        postedBy: {
-          name: "Kamogelo Khumalo",
-          id: "",
-          university: "UP",
-          schoolYear: "Postgrad",
-          degree: "Acturial Science",
-          image: "",
-        },
-        timePosted: "00:00",
-        text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat",
-        numLikes: 1,
-      },
-    ],
-  },
-];
 const FeedPage = () => {
   const [tab, setTab] = useState(0);
   const [isPostQuestion, setIsPostQuestion] = useState(false);
   const [isPostOpportunity, setIsPostOpportunity] = useState(false);
   const [isPostEvent, setIsPostEvent] = useState(false);
   const [isPostGeneral, setIsPostGeneral] = useState(false);
-  const [postDetails, setPostDetails] = useState({});
   const [user] = useAuthState(auth);
+  const [userDetails, setUserDetails] = useState({});
+  const [posts, setPosts] = useState([]);
+  const [postsToDisplay, setPostsToDisplay] = useState([]);
 
+  const router = useRouter();
 
-  if (isPostQuestion) {
-    return (
-      <PostQuestionView setPost={setIsPostQuestion} handlePost={() => {}} />
-    );
-  }
+  const isUserSignedIn = () => {
+    console.log("user is signed in");
+    return user != null;
+  };
+
+  const directToOnboard = () => {
+    router.push("/onboard");
+  };
+
+  const checkUserSign = () => {
+    if (!isUserSignedIn()) {
+      directToOnboard();
+    }
+  };
+
+  const filterPostsByType = (type) => {
+    if (type == "All") {
+      setPostsToDisplay(posts);
+    } else {
+      let newPosts = posts.filter((post) => post.postType == type);
+      setPostsToDisplay(newPosts);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      getUserDetails(user.uid).then((res) => {
+        setUserDetails(res);
+      });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    console.log(tab);
+    if (tab == 0) {
+      filterPostsByType("All");
+    } else if (tab == 1) {
+      filterPostsByType("Opportunity");
+    } else if (tab == 2) {
+      filterPostsByType("Question");
+    } else if (tab == 3) {
+      filterPostsByType("Event");
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    const unsub = onSnapshot(collection(db, "posts"), (snapshot) => {
+      let newPosts = [];
+      snapshot.docs.forEach((doc) => {
+        newPosts.push(doc.data());
+      });
+      setPosts(newPosts);
+
+      // Done on first mount because posts state is cannot be used in filterPostByType method
+      if (tab == 0) {
+        setPostsToDisplay(newPosts);
+      }
+      console.log(newPosts);
+    });
+
+    return unsub;
+  }, []);
 
   if (isPostOpportunity) {
     return (
       <PostOpportunityView
         setPost={setIsPostOpportunity}
-        handlePost={() => {}}
+        checkUserSign={checkUserSign}
+        userDetails={userDetails}
       />
     );
   }
-  if (isPostEvent) {
-    return <PostEventView setPost={setIsPostEvent} handlePost={() => {}} />;
+
+  if (isPostQuestion) {
+    return (
+      <PostQuestionView
+        setPost={setIsPostQuestion}
+        checkUserSign={checkUserSign}
+        userDetails={userDetails}
+      />
+    );
   }
+
+  if (isPostEvent) {
+    return (
+      <PostEventView
+        setPost={setIsPostEvent}
+        checkUserSign={checkUserSign}
+        userDetails={userDetails}
+      />
+    );
+  }
+
   return (
     <div className={feedStyles.container}>
       <span
         style={{
-          position: "absolute",
+          position: "fixed",
           bottom: "5rem",
           zIndex: "3",
           right: "1rem",
@@ -96,7 +158,10 @@ const FeedPage = () => {
           alignItems: "center",
           justifyContent: "center",
         }}
-        onClick={() => setIsPostGeneral(true)}
+        onClick={() => {
+          checkUserSign();
+          setIsPostGeneral(true);
+        }}
       >
         <IoCreate size="32px" />
       </span>
@@ -114,12 +179,15 @@ const FeedPage = () => {
             alignItems: "center",
             justifyContent: "center",
           }}
-          onClick={() => setIsPostGeneral(false)}
+          onClick={() => {
+            setIsPostGeneral(false);
+          }}
         >
           <CreatePostCard
             setIsPostEvent={setIsPostEvent}
             setIsPostOpportunity={setIsPostOpportunity}
             setIsPostQuestion={setIsPostQuestion}
+            checkUserSign={checkUserSign}
           />
         </div>
       ) : null}
@@ -128,6 +196,7 @@ const FeedPage = () => {
         setIsPostEvent={setIsPostEvent}
         setIsPostOpportunity={setIsPostOpportunity}
         setIsPostQuestion={setIsPostQuestion}
+        checkUserSign={checkUserSign}
       />
       <div
         style={{
@@ -137,69 +206,103 @@ const FeedPage = () => {
           justifyContent: "space-evenly",
         }}
       >
-        <span onClick={() => setTab(0)}>All</span>
-        <span onClick={() => setTab(1)}>Opportunities</span>
-        <span onClick={() => setTab(2)}>Questions</span>
-        <span onClick={() => setTab(3)}>Events</span>
+        <span
+          onClick={() => setTab(0)}
+          style={{
+            textDecoration: tab == 0 ? "underline" : "none",
+            textDecorationThickness: "2px",
+          }}
+        >
+          All
+        </span>
+        <span
+          onClick={() => setTab(1)}
+          style={{
+            textDecoration: tab == 1 ? "underline" : "none",
+            textDecorationThickness: "2px",
+          }}
+        >
+          Opportunities
+        </span>
+        <span
+          onClick={() => setTab(2)}
+          style={{
+            textDecoration: tab == 2 ? "underline" : "none",
+            textDecorationThickness: "2px",
+          }}
+        >
+          Questions
+        </span>
+        <span
+          onClick={() => setTab(3)}
+          style={{
+            textDecoration: tab == 3 ? "underline" : "none",
+            textDecorationThickness: "2px",
+          }}
+        >
+          Events
+        </span>
       </div>
       <div>
-        {posts.map((element, idx) => {
-          return (
-            <div key={`post${idx}`}>
-              <PostCard post={element} />
-            </div>
-          );
-        })}
+        {postsToDisplay.length ? (
+          postsToDisplay.map((element, idx) => {
+            return (
+              <div key={`post${idx}`} style={{ marginBottom: "1rem" }}>
+                <PostCard post={element} userDetails={userDetails} />
+              </div>
+            );
+          })
+        ) : (
+          <div>No posts to display</div>
+        )}
       </div>
     </div>
   );
 };
 
-const PostQuestionView = ({ setPost, handlePost }) => {
-  return (
-    <div className={feedStyles.postModal}>
-      <span
-        style={{
-          marginLeft: "auto",
-          marginBottom: "1rem",
-          position: "absolute",
-          right: ".75rem",
-        }}
-        onClick={() => setPost(false)}
-      >
-        <MdClose />
-      </span>
-      <span className={textStyles.pageHeading}>Ask a question</span>
-      <textarea placeholder="What would you like to share?" />
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "200px",
-          border: "dashed 2px var(--border-color)",
-        }}
-      >
-        <MdImage />
-        Add image
-      </label>
-      <input type="file" id="postImage" style={{ display: "none" }} />
-      <button
-        style={{
-          position: "absolute",
-          bottom: "1rem",
-          left: ".75rem",
-          right: ".75rem",
-        }}
-        onClick={handlePost}
-      >
-        Post
-      </button>
-    </div>
-  );
-};
+const PostOpportunityView = ({ setPost, userDetails }) => {
+  const [postDetails, setPostDetails] = useState({
+    id: "",
+    postType: "Opportunity",
+    postedBy: {
+      id: userDetails.id,
+    },
+    timePosted: null,
+    text: "",
+    image: "",
+    likes: [],
+    replies: [],
+  });
+  const [opportunityDetails, setOpportunityDetails] = useState({
+    title: "",
+    industry: "",
+    type: "",
+    company: "",
+    link: "",
+    image: "",
+    description: "",
+    postedBy: {
+      id: userDetails.id,
+    },
+  });
 
-const PostOpportunityView = ({ setPost, handlePost }) => {
+  const handleSubmit = async () => {
+    createPost({
+      ...postDetails,
+      text:
+        `<b>${opportunityDetails.title}</b><br/>` +
+        ". " +
+        postDetails.text +
+        `<br/><a target="_blank">${opportunityDetails.link}</a>`,
+    });
+    createOpportunity({
+      ...opportunityDetails,
+      description: postDetails.text,
+      image: postDetails.image,
+    });
+    setPost(false);
+  };
+
   return (
     <div className={feedStyles.postModal}>
       <span
@@ -214,27 +317,56 @@ const PostOpportunityView = ({ setPost, handlePost }) => {
         <MdClose />
       </span>
       <span className={textStyles.pageHeading}>Post opportunity</span>
-      <input type="text" placeholder="title" />
+      <input
+        type="text"
+        id="title"
+        placeholder="title"
+        onChange={(e) => {
+          handleInputChange(e, opportunityDetails, setOpportunityDetails);
+        }}
+      />
       <div style={{ display: "flex", flexDirection: "row", margin: "1rem 0" }}>
         <CustomSelect
           id="industry"
           title="Industry"
           options={["Tech", "Others"]}
           showSelectedOptionAsTitle
-          handleChange={() => {}}
+          handleChange={(e) =>
+            handleSelectChange(e, opportunityDetails, setOpportunityDetails)
+          }
           margin="0 1rem 0 0"
         />
         <CustomSelect
           id="type"
           title="Type"
-          options={["Tech", "Others"]}
+          options={["Internship", "Job", "Graduate programme", "Bursary"]}
           showSelectedOptionAsTitle
-          handleChange={() => {}}
+          handleChange={(e) =>
+            handleSelectChange(e, opportunityDetails, setOpportunityDetails)
+          }
         />
       </div>
-      <input type="text" placeholder="Company" />
-      <textarea placeholder="Description" />
-      <input type="text" placeholder="Link" />
+      <input
+        id="company"
+        type="text"
+        placeholder="Company"
+        onChange={(e) =>
+          handleInputChange(e, opportunityDetails, setOpportunityDetails)
+        }
+      />
+      <textarea
+        placeholder="Description"
+        id="text"
+        onChange={(e) => handleInputChange(e, postDetails, setPostDetails)}
+      />
+      <input
+        type="text"
+        placeholder="Link"
+        id="link"
+        onChange={(e) =>
+          handleInputChange(e, opportunityDetails, setOpportunityDetails)
+        }
+      />
       <label
         style={{
           display: "flex",
@@ -247,7 +379,12 @@ const PostOpportunityView = ({ setPost, handlePost }) => {
         <MdImage />
         Add image
       </label>
-      <input type="file" id="postImage" style={{ display: "none" }} />
+      <input
+        type="file"
+        id="postImage"
+        style={{ display: "none" }}
+        onChange={() => {}}
+      />
       <button
         style={{
           position: "absolute",
@@ -255,7 +392,7 @@ const PostOpportunityView = ({ setPost, handlePost }) => {
           left: ".75rem",
           right: ".75rem",
         }}
-        onClick={handlePost}
+        onClick={handleSubmit}
       >
         Post
       </button>
@@ -263,7 +400,111 @@ const PostOpportunityView = ({ setPost, handlePost }) => {
   );
 };
 
-const PostEventView = ({ setPost, handlePost }) => {
+const PostQuestionView = ({ setPost, userDetails }) => {
+  const [postDetails, setPostDetails] = useState({
+    id: "",
+    postType: "Question",
+    postedBy: {
+      id: userDetails.id,
+    },
+    timePosted: null,
+    text: "",
+    image: "",
+    likes: [],
+    replies: [],
+  });
+
+  return (
+    <div className={feedStyles.postModal}>
+      <span
+        style={{
+          marginLeft: "auto",
+          marginBottom: "1rem",
+          position: "absolute",
+          right: ".75rem",
+        }}
+        onClick={() => setPost(false)}
+      >
+        <MdClose />
+      </span>
+      <span className={textStyles.pageHeading}>Ask a question</span>
+      <textarea
+        placeholder="What would you like to share?"
+        id="text"
+        onChange={(e) => handleInputChange(e, postDetails, setPostDetails)}
+      />
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "200px",
+          border: "dashed 2px var(--border-color)",
+        }}
+      >
+        <MdImage />
+        Add image
+      </label>
+      <button
+        style={{
+          position: "absolute",
+          bottom: "1rem",
+          left: ".75rem",
+          right: ".75rem",
+        }}
+        onClick={() => {
+          createPost(postDetails);
+          setPost(false);
+        }}
+      >
+        Post
+      </button>
+    </div>
+  );
+};
+
+const PostEventView = ({ setPost, userDetails }) => {
+  const [postDetails, setPostDetails] = useState({
+    id: "",
+    postType: "Event",
+    postedBy: {
+      id: userDetails.id,
+    },
+    timePosted: null,
+    text: "",
+    image: "",
+    likes: [],
+    replies: [],
+  });
+  const [eventDetails, setEventDetails] = useState({
+    title: "",
+    industry: "",
+    company: "",
+    link: "",
+    image: "",
+    description: "",
+    postedBy: {
+      id: userDetails.id,
+    },
+  });
+
+  const handleSubmit = async () => {
+    createPost({
+      ...postDetails,
+      text:
+        `<b>${eventDetails.title}</b>.<br/>` +
+        postDetails.text +
+        `<br/><a target="_blank">${eventDetails.link}</a>`,
+    });
+
+    createEvent({
+      ...eventDetails,
+      description: postDetails.text,
+      image: postDetails.image,
+    });
+    setPost(false);
+  };
+
   return (
     <div className={feedStyles.postModal}>
       <span
@@ -278,21 +519,47 @@ const PostEventView = ({ setPost, handlePost }) => {
         <MdClose />
       </span>
       <span className={textStyles.pageHeading}>Post event</span>
-      <input type="text" placeholder="title" />
+      <input
+        type="text"
+        placeholder="title"
+        id="title"
+        onChange={(e) => handleInputChange(e, eventDetails, setEventDetails)}
+      />
       <div style={{ display: "flex", flexDirection: "row", margin: "1rem 0" }}>
-        <input type="date" placeholder="title" />
+        <input
+          type="date"
+          placeholder="title"
+          id="date"
+          onChange={(e) => handleInputChange(e, eventDetails, setEventDetails)}
+        />
         <CustomSelect
           id="industry"
           title="Industry"
           options={["Tech", "Others"]}
           showSelectedOptionAsTitle
-          handleChange={() => {}}
+          handleChange={(e) =>
+            handleSelectChange(e, eventDetails, setEventDetails)
+          }
           margin="0 1rem 0 0"
         />
       </div>
-      <input type="text" placeholder="Company" />
-      <textarea placeholder="Description" />
-      <input type="text" placeholder="Link" />
+      <input
+        type="text"
+        placeholder="Company"
+        id="company"
+        onChange={(e) => handleInputChange(e, eventDetails, setEventDetails)}
+      />
+      <textarea
+        placeholder="Description"
+        id="text"
+        onChange={(e) => handleInputChange(e, postDetails, setPostDetails)}
+      />
+      <input
+        type="text"
+        placeholder="Link"
+        id="link"
+        onChange={(e) => handleInputChange(e, eventDetails, setEventDetails)}
+      />
       <label
         style={{
           display: "flex",
@@ -305,7 +572,7 @@ const PostEventView = ({ setPost, handlePost }) => {
         <MdImage />
         Add image
       </label>
-      <input type="file" id="postImage" style={{ display: "none" }} />
+      <input type="file" id="image" style={{ display: "none" }} />
       <button
         style={{
           position: "absolute",
@@ -313,7 +580,7 @@ const PostEventView = ({ setPost, handlePost }) => {
           left: ".75rem",
           right: ".75rem",
         }}
-        onClick={handlePost}
+        onClick={handleSubmit}
       >
         Post
       </button>
@@ -325,6 +592,7 @@ const CreatePostCard = ({
   setIsPostEvent,
   setIsPostOpportunity,
   setIsPostQuestion,
+  checkUserSign,
 }) => {
   return (
     <div
@@ -359,21 +627,30 @@ const CreatePostCard = ({
       >
         <span
           className={feedStyles.postOption}
-          onClick={() => setIsPostOpportunity(true)}
+          onClick={() => {
+            checkUserSign();
+            setIsPostOpportunity(true);
+          }}
         >
           <MdCampaign />
           <span>Opportunity</span>
         </span>
         <span
           className={feedStyles.postOption}
-          onClick={() => setIsPostQuestion(true)}
+          onClick={() => {
+            checkUserSign();
+            setIsPostQuestion(true);
+          }}
         >
           <MdQuestionAnswer />
           <span>Question</span>
         </span>
         <span
           className={feedStyles.postOption}
-          onClick={() => setIsPostEvent(true)}
+          onClick={() => {
+            checkUserSign();
+            setIsPostEvent(true);
+          }}
         >
           <MdEvent />
           <span>Event</span>

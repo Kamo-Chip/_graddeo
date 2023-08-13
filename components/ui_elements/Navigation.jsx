@@ -3,10 +3,12 @@ import { MdEvent, MdSearch, MdDynamicFeed } from "react-icons/md";
 import { RiGroup2Fill } from "react-icons/ri";
 import { BiSolidUserCircle } from "react-icons/bi";
 import { useRouter } from "next/router";
+import { useAuthState } from "react-firebase-hooks/auth";
+import { auth } from "@/firebase";
 
 const Navigation = () => {
   const router = useRouter();
-
+  const [user] = useAuthState(auth);
   return (
     <div className={navigationStyles.container}>
       <span
@@ -48,7 +50,7 @@ const Navigation = () => {
       <span
         className={navigationStyles.option}
         onClick={() => {
-          router.push("/profile");
+          router.push(`/users/${user.uid}`);
         }}
       >
         <BiSolidUserCircle />
