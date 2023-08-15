@@ -4,7 +4,7 @@ import displayStyles from "@/styles/utils/displays.module.css";
 import { useEffect, useState } from "react";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { auth, db } from "@/firebase";
-import { getUserDetails } from "@/lib/dbFunctions";
+import { getUserDetails, isUsersConnected } from "@/lib/dbFunctions";
 import UserProfile from "@/components/ui_elements/UserProfile";
 import { getDoc, doc, getDocs, collection } from "firebase/firestore";
 
@@ -37,12 +37,24 @@ export const getStaticPaths = async () => {
 
 const ProfilePage = ({ userDetails }) => {
   const [user] = useAuthState(auth);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    if (user && userDetails) {
+      isUsersConnected(user.uid, userDetails.id).then((res) =>
+        setIsConnected(res)
+      );
+    }
+  }, [user, userDetails]);
+
   if (!userDetails || !user) {
     return <div>Loading...</div>;
   }
   return (
     <UserProfile
       userDetails={userDetails}
+      user={user}
+      isViewerConnected={isConnected}
       isSameUser={user.uid == userDetails.id}
     />
   );

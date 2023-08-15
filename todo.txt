@@ -1,6 +1,7 @@
-- Complete edit profile feature
-- Add images
+- Clean up and style all things to do with profile
+- Add images to posts
 - Fix any bugs
     - Database read/write optimisation
+- Add opportunities and artificial posts
 - Fix styling
 - Add company view
